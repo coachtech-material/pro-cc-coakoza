@@ -3,25 +3,23 @@
 namespace App\Http\Controllers;
 
 use App\Models\Course;
-use App\Models\Enrollment;
-use App\Policies\EnrollmentPolicy;
+use App\Services\EnrollmentService;
 use Illuminate\Http\Request;
 
 class EnrollmentController extends Controller
 {
+    public function __construct(
+        private EnrollmentService $enrollmentService
+    ) {}
+
     public function store(Course $course)
     {
-        $policy = new EnrollmentPolicy();
-        if (!$policy->enroll(auth()->user(), $course)) {
-            abort(403, 'この操作は許可されていません。');
+        try {
+            $this->enrollmentService->enroll(auth()->user(), $course);
+        } catch (\Exception $e) {
+            return redirect()->route('courses.show', $course)
+                ->with('error', $e->getMessage());
         }
-
-        Enrollment::create([
-            'user_id' => auth()->id(),
-            'course_id' => $course->id,
-            'status' => 'active',
-            'enrolled_at' => now(),
-        ]);
 
         return redirect()->route('courses.show', $course)
             ->with('success', 'コースに登録しました。');
